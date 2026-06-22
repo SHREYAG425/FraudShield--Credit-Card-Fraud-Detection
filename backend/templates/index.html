@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FraudShield — Credit Card Fraud Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:     #07080f;
+  --bg2:    #0d0f1a;
+  --panel:  #111420;
+  --panel2: #171b2e;
+  --border: #1e2440;
+  --red:    #ff2d55;
+  --green:  #00e676;
+  --blue:   #2979ff;
+  --amber:  #ffab00;
+  --text:   #e8eaf6;
+  --text2:  #7986cb;
+  --text3:  #3d4a7a;
+  --mono:   'IBM Plex Mono', monospace;
+  --sans:   'IBM Plex Sans', sans-serif;
+  --display:'Bebas Neue', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); min-height:100vh; }
+body::after { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px); pointer-events:none; z-index:9999; }
+
+/* ── SCREENS ── */
+.screen { display:none; min-height:100vh; }
+.screen.active { display:flex; }
+
+/* ── AUTH ── */
+#screen-auth { align-items:center; justify-content:center; flex-direction:column; padding:2rem; background:radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,45,85,0.07) 0%, transparent 70%), var(--bg); }
+.brand { text-align:center; margin-bottom:2.5rem; }
+.brand-name { font-family:var(--display); font-size:4rem; letter-spacing:5px; line-height:1; }
+.brand-name span { color:var(--red); }
+.brand-sub { font-family:var(--mono); font-size:0.65rem; letter-spacing:4px; text-transform:uppercase; color:var(--text2); margin-top:0.4rem; }
+.auth-box { width:100%; max-width:460px; background:var(--panel); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.auth-tabs { display:flex; border-bottom:1px solid var(--border); }
+.auth-tab { flex:1; padding:1rem; background:none; border:none; font-family:var(--mono); font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.2s; }
+.auth-tab.on { color:var(--red); border-bottom-color:var(--red); }
+.auth-form { padding:2rem; }
+.field { margin-bottom:1.2rem; }
+.field label { display:block; font-family:var(--mono); font-size:0.62rem; letter-spacing:2.5px; text-transform:uppercase; color:var(--text2); margin-bottom:0.5rem; }
+.field input, .field select, .field textarea { width:100%; padding:0.75rem 1rem; background:var(--bg2); border:1px solid var(--border); border-radius:3px; color:var(--text); font-family:var(--mono); font-size:0.85rem; outline:none; transition:border-color 0.2s; }
+.field textarea { resize:vertical; min-height:80px; line-height:1.6; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color:var(--red); }
+.field select option { background:var(--panel); }
+.err-box { background:rgba(255,45,85,0.1); border:1px solid var(--red); border-radius:3px; padding:0.7rem 1rem; font-family:var(--mono); font-size:0.75rem; color:var(--red); margin-bottom:1rem; display:none; }
+.demo-box { margin-top:1.5rem; border:1px solid var(--border); border-radius:3px; overflow:hidden; }
+.demo-head { padding:0.6rem 1rem; background:var(--panel2); font-family:var(--mono); font-size:0.6rem; letter-spacing:2px; text-transform:uppercase; color:var(--text3); }
+.demo-row { display:grid; grid-template-columns:90px 1fr 80px; gap:0.5rem; padding:0.6rem 1rem; border-top:1px solid var(--border); font-family:var(--mono); font-size:0.7rem; cursor:pointer; transition:background 0.15s; align-items:center; }
+.demo-row:hover { background:var(--panel2); }
+.dr-a { color:var(--amber); } .dr-b { color:var(--blue); } .dr-u { color:var(--green); }
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:0.4rem; padding:0.8rem 1.5rem; border:none; border-radius:3px; font-family:var(--mono); font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; font-weight:600; }
+.btn-full { width:100%; }
+.btn-red    { background:var(--red);  color:#fff; } .btn-red:hover { filter:brightness(0.85); }
+.btn-outline{ background:transparent; border:1px solid var(--border); color:var(--text2); } .btn-outline:hover { border-color:var(--text2); color:var(--text); }
+.btn-green  { background:rgba(0,230,118,0.1); border:1px solid var(--green);  color:var(--green);  } .btn-green:hover  { background:rgba(0,230,118,0.2); }
+.btn-blue   { background:rgba(41,121,255,0.1); border:1px solid var(--blue);   color:var(--blue);   } .btn-blue:hover   { background:rgba(41,121,255,0.2); }
+.btn-amber  { background:rgba(255,171,0,0.1);  border:1px solid var(--amber);  color:var(--amber);  } .btn-amber:hover  { background:rgba(255,171,0,0.2); }
+.btn-sm { padding:0.4rem 0.85rem; font-size:0.65rem; }
+
+/* ── APP LAYOUT ── */
+#screen-app { flex-direction:row; }
+.sidebar { width:225px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; height:100vh; position:sticky; top:0; overflow-y:auto; }
+.sb-brand { padding:1.25rem; border-bottom:1px solid var(--border); }
+.sb-brand-name { font-family:var(--display); font-size:1.6rem; letter-spacing:3px; line-height:1; }
+.sb-brand-name span { color:var(--red); }
+.sb-brand-sub { font-family:var(--mono); font-size:0.55rem; letter-spacing:2px; text-transform:uppercase; color:var(--text3); margin-top:3px; }
+.sb-user { margin:1rem; padding:0.85rem; background:var(--bg2); border:1px solid var(--border); border-radius:3px; }
+.sb-name { font-weight:600; font-size:0.85rem; }
+.sb-role { font-family:var(--mono); font-size:0.6rem; letter-spacing:1.5px; text-transform:uppercase; margin-top:3px; }
+.sb-cap  { font-family:var(--mono); font-size:0.6rem; color:var(--text3); margin-top:0.4rem; line-height:1.5; }
+.role-admin   { color:var(--amber); }
+.role-analyst { color:var(--blue);  }
+.role-user    { color:var(--green); }
+.sb-sep  { padding:0.9rem 1rem 0.3rem; font-family:var(--mono); font-size:0.55rem; letter-spacing:2.5px; text-transform:uppercase; color:var(--text3); }
+.sb-item { display:flex; align-items:center; gap:0.75rem; padding:0.6rem 1rem; margin:0.1rem 0.5rem; border-radius:3px; cursor:pointer; font-size:0.82rem; font-weight:500; color:var(--text2); transition:all 0.15s; }
+.sb-item:hover { background:var(--panel2); color:var(--text); }
+.sb-item.on { background:rgba(255,45,85,0.1); color:var(--red); border:1px solid rgba(255,45,85,0.2); }
+.sb-item .ico { font-size:1rem; width:20px; text-align:center; }
+.sb-item .badge { margin-left:auto; background:var(--red); color:#fff; font-family:var(--mono); font-size:0.6rem; padding:0.1rem 0.4rem; border-radius:2px; }
+.sb-footer { margin-top:auto; padding:1rem; border-top:1px solid var(--border); }
+.sb-logout { display:flex; align-items:center; gap:0.5rem; width:100%; padding:0.65rem 1rem; background:none; border:1px solid var(--border); border-radius:3px; color:var(--text2); font-family:var(--mono); font-size:0.72rem; cursor:pointer; transition:all 0.2s; }
+.sb-logout:hover { border-color:var(--red); color:var(--red); }
+
+/* ── MAIN ── */
+.main { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.topbar { padding:1rem 2rem; border-bottom:1px solid var(--border); background:var(--panel); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.topbar-title { font-family:var(--display); font-size:1.6rem; letter-spacing:2px; }
+.topbar-right { display:flex; align-items:center; gap:1.25rem; }
+.ml-live { display:flex; align-items:center; gap:0.4rem; font-family:var(--mono); font-size:0.62rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text2); }
+.ml-dot  { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.content { flex:1; overflow-y:auto; padding:2rem; }
+.page { display:none; }
+.page.active { display:block; animation:fadeup 0.25s ease; }
+@keyframes fadeup { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+
+/* ── LAYOUT HELPERS ── */
+.two-col   { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+.kpi-grid  { display:grid; gap:1rem; margin-bottom:1.5rem; }
+.kpi-4 { grid-template-columns:repeat(4,1fr); }
+.kpi-3 { grid-template-columns:repeat(3,1fr); }
+
+/* ── KPI CARDS ── */
+.kpi { background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:1.25rem 1.5rem; position:relative; overflow:hidden; }
+.kpi-line { position:absolute; bottom:0; left:0; right:0; height:2px; }
+.kpi-label { font-family:var(--mono); font-size:0.6rem; letter-spacing:2px; text-transform:uppercase; color:var(--text2); margin-bottom:0.5rem; }
+.kpi-val   { font-family:var(--display); font-size:2.2rem; letter-spacing:1px; line-height:1; }
+.kpi-sub   { font-family:var(--mono); font-size:0.65rem; color:var(--text2); margin-top:0.3rem; }
+.c-red   { color:var(--red);   } .c-green { color:var(--green); }
+.c-blue  { color:var(--blue);  } .c-amber { color:var(--amber); }
+
+/* ── PANELS ── */
+.panel { background:var(--panel); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:1.5rem; }
+.panel-head { padding:0.85rem 1.25rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.panel-title { font-family:var(--mono); font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:var(--text2); }
+.panel-body { padding:1.25rem; }
+
+/* ── FORM ── */
+.f-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:0.5rem; }
+.f-full { grid-column:span 2; }
+
+/* ── TABLE ── */
+.tbl-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+thead tr { border-bottom:1px solid var(--border); }
+th { padding:0.75rem 1rem; text-align:left; font-family:var(--mono); font-size:0.6rem; letter-spacing:2px; text-transform:uppercase; color:var(--text3); white-space:nowrap; }
+td { padding:0.8rem 1rem; font-size:0.8rem; border-bottom:1px solid rgba(30,36,64,0.5); vertical-align:middle; }
+tbody tr:hover { background:var(--panel2); }
+tbody tr:last-child td { border-bottom:none; }
+
+/* ── BADGES ── */
+.b { display:inline-block; padding:0.2rem 0.65rem; border-radius:2px; font-family:var(--mono); font-size:0.6rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; white-space:nowrap; }
+.b-fraud            { background:rgba(255,45,85,0.15);  color:var(--red);   border:1px solid rgba(255,45,85,0.35); }
+.b-genuine          { background:rgba(0,230,118,0.1);   color:var(--green); border:1px solid rgba(0,230,118,0.25); }
+.b-open             { background:rgba(255,171,0,0.12);  color:var(--amber); border:1px solid rgba(255,171,0,0.3);  }
+.b-investigating    { background:rgba(41,121,255,0.12); color:var(--blue);  border:1px solid rgba(41,121,255,0.3); }
+.b-confirmed_fraud  { background:rgba(255,45,85,0.15);  color:var(--red);   border:1px solid rgba(255,45,85,0.35); }
+.b-cleared          { background:rgba(0,230,118,0.1);   color:var(--green); border:1px solid rgba(0,230,118,0.25); }
+.b-admin   { background:rgba(255,171,0,0.12);  color:var(--amber); border:1px solid rgba(255,171,0,0.3);  }
+.b-analyst { background:rgba(41,121,255,0.12); color:var(--blue);  border:1px solid rgba(41,121,255,0.3); }
+.b-user    { background:rgba(0,230,118,0.1);   color:var(--green); border:1px solid rgba(0,230,118,0.25); }
+.b-active  { background:rgba(0,230,118,0.1);   color:var(--green); border:1px solid rgba(0,230,118,0.25); }
+.b-inactive{ background:rgba(255,45,85,0.12);  color:var(--red);   border:1px solid rgba(255,45,85,0.35); }
+
+/* ── PROB BAR ── */
+.pbar { display:flex; align-items:center; gap:0.6rem; }
+.pbar-track { flex:1; height:3px; background:var(--bg); border-radius:2px; min-width:50px; overflow:hidden; }
+.pbar-fill  { height:100%; border-radius:2px; }
+.pbar-val   { font-family:var(--mono); font-size:0.7rem; min-width:40px; }
+
+/* ── ROLE BANNER ── */
+.rbanner { padding:0.75rem 1.25rem; border-radius:3px; margin-bottom:1.5rem; font-family:var(--mono); font-size:0.72rem; line-height:1.6; display:flex; gap:0.75rem; align-items:flex-start; }
+.rb-user    { background:rgba(0,230,118,0.07);  border:1px solid rgba(0,230,118,0.25); color:var(--green); }
+.rb-analyst { background:rgba(41,121,255,0.07); border:1px solid rgba(41,121,255,0.25); color:var(--blue);  }
+.rb-admin   { background:rgba(255,171,0,0.07);  border:1px solid rgba(255,171,0,0.25);  color:var(--amber); }
+
+/* ── SPINNER ── */
+.spin-wrap { display:none; position:absolute; inset:0; background:rgba(7,8,15,0.9); border-radius:4px; align-items:center; justify-content:center; flex-direction:column; gap:1rem; z-index:50; }
+.spin-wrap.on { display:flex; }
+.spinner { width:36px; height:36px; border:2px solid var(--border); border-top-color:var(--red); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg);} }
+.spin-lbl { font-family:var(--mono); font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--red); }
+
+/* ── RESULT BOX ── */
+.result-box { display:none; border-radius:4px; padding:2rem; text-align:center; border:1px solid var(--border); margin-bottom:1.5rem; animation:fadeup 0.3s ease; }
+.result-box.fraud   { background:rgba(255,45,85,0.05);  border-color:rgba(255,45,85,0.3);  }
+.result-box.genuine { background:rgba(0,230,118,0.04);  border-color:rgba(0,230,118,0.25); }
+.result-emoji   { font-size:3rem; margin-bottom:0.5rem; }
+.result-verdict { font-family:var(--display); font-size:2.5rem; letter-spacing:3px; }
+.result-prob    { font-family:var(--mono); font-size:0.85rem; margin:0.25rem 0 1rem; }
+.result-meta    { display:flex; justify-content:center; gap:2rem; flex-wrap:wrap; }
+.rmi { font-family:var(--mono); font-size:0.7rem; color:var(--text2); }
+.rmi strong { display:block; font-size:0.85rem; color:var(--text); margin-bottom:0.15rem; }
+
+/* ── FILTER BAR ── */
+.filter-bar { display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+.filter-bar input, .filter-bar select { background:var(--panel); border:1px solid var(--border); border-radius:3px; padding:0.55rem 0.85rem; color:var(--text); font-family:var(--mono); font-size:0.75rem; outline:none; transition:border-color 0.2s; }
+.filter-bar input { flex:1; min-width:200px; }
+.filter-bar input:focus, .filter-bar select:focus { border-color:var(--red); }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:2rem; right:2rem; background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:0.85rem 1.25rem; font-family:var(--mono); font-size:0.75rem; z-index:10000; max-width:340px; transform:translateY(80px); opacity:0; transition:all 0.3s ease; pointer-events:none; }
+.toast.show { transform:translateY(0); opacity:1; }
+.t-red   { border-left:3px solid var(--red);   color:var(--red);   }
+.t-green { border-left:3px solid var(--green);  color:var(--green); }
+.t-blue  { border-left:3px solid var(--blue);   color:var(--blue);  }
+.t-amber { border-left:3px solid var(--amber);  color:var(--amber); }
+
+/* ── MODAL ── */
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(7,8,15,0.85); z-index:1000; align-items:center; justify-content:center; padding:1rem; }
+.modal-bg.on { display:flex; }
+.modal-box { background:var(--panel); border:1px solid var(--border); border-radius:4px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; animation:fadeup 0.2s ease; }
+.modal-head { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title { font-family:var(--display); font-size:1.4rem; letter-spacing:2px; }
+.modal-close { background:none; border:none; color:var(--text2); font-size:1.2rem; cursor:pointer; } .modal-close:hover { color:var(--red); }
+.modal-body { padding:1.5rem; }
+.modal-foot { padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; gap:0.75rem; justify-content:flex-end; }
+
+/* ── INFO ROWS ── */
+.info-row { display:flex; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid var(--border); }
+.info-row:last-child { border-bottom:none; }
+.info-k { font-family:var(--mono); font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:var(--text2); }
+.info-v { font-family:var(--mono); font-size:0.78rem; }
+
+/* ── MISC ── */
+.txnid { font-family:var(--mono); font-size:0.72rem; color:var(--blue); }
+.empty { padding:3rem; text-align:center; color:var(--text3); }
+.empty-ico { font-size:2.5rem; margin-bottom:0.75rem; }
+.empty p { font-family:var(--mono); font-size:0.75rem; }
+.api-err { background:rgba(255,45,85,0.07); border:1px solid rgba(255,45,85,0.3); border-radius:4px; padding:1.5rem; text-align:center; font-family:var(--mono); font-size:0.8rem; color:var(--red); line-height:1.8; }
+.api-err code { background:var(--bg2); padding:0.15rem 0.4rem; border-radius:2px; font-size:0.75rem; }
+
+@media(max-width:900px) { .kpi-4{grid-template-columns:1fr 1fr;} .two-col{grid-template-columns:1fr;} }
+@media(max-width:640px)  { .sidebar{display:none;} .f-row{grid-template-columns:1fr;} .f-full{grid-column:span 1;} }
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH SCREEN ══ -->
+<div id="screen-auth" class="screen active">
+  <div class="brand">
+    <div class="brand-name">FRAUD<span>SHIELD</span></div>
+    <div class="brand-sub">Credit Card Fraud Detection · ML Powered · Full Stack</div>
+  </div>
+  <div class="auth-box">
+    <div class="auth-tabs">
+      <button class="auth-tab on" onclick="switchTab('login',this)">Login</button>
+      <button class="auth-tab"    onclick="switchTab('register',this)">Register</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="af-login" class="auth-form">
+      <div id="login-err" class="err-box"></div>
+      <div class="field"><label>Email</label><input id="l-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="field"><label>Password</label><input id="l-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn btn-red btn-full" id="login-btn" onclick="doLogin()">→ ACCESS SYSTEM</button>
+      <div class="demo-box">
+        <div class="demo-head">⚡ Quick Login — click any row</div>
+        <div class="demo-row" onclick="quick('admin@fraudshield.com','admin123')">
+          <span class="dr-a">ADMIN</span><span>admin@fraudshield.com</span><span style="color:var(--text3)">admin123</span>
+        </div>
+        <div class="demo-row" onclick="quick('analyst@bank.com','analyst123')">
+          <span class="dr-b">ANALYST</span><span>analyst@bank.com</span><span style="color:var(--text3)">analyst123</span>
+        </div>
+        <div class="demo-row" onclick="quick('user@test.com','user123')">
+          <span class="dr-u">USER</span><span>user@test.com</span><span style="color:var(--text3)">user123</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="af-register" class="auth-form" style="display:none">
+      <div id="reg-err" class="err-box"></div>
+      <div class="field"><label>Full Name</label><input id="r-name" placeholder="Jane Doe"></div>
+      <div class="field"><label>Email</label><input id="r-email" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="r-pass" type="password" placeholder="Minimum 6 characters"></div>
+      <div class="field"><label>Register As</label>
+        <select id="r-role">
+          <option value="user">General User — submit transactions for checking</option>
+          <option value="analyst">Bank Analyst — review and investigate fraud cases</option>
+        </select>
+      </div>
+      <button class="btn btn-red btn-full" onclick="doRegister()">→ CREATE ACCOUNT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP SCREEN ══ -->
+<div id="screen-app" class="screen">
+
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-brand-name">FRAUD<span>SHIELD</span></div>
+      <div class="sb-brand-sub">Detection System v2.0</div>
+    </div>
+    <div class="sb-user">
+      <div class="sb-name" id="sb-name">–</div>
+      <div class="sb-role" id="sb-role">–</div>
+      <div class="sb-cap"  id="sb-cap">–</div>
+    </div>
+    <div id="sb-nav"></div>
+    <div class="sb-footer">
+      <button class="sb-logout" onclick="doLogout()">⏻ &nbsp; LOGOUT</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">DASHBOARD</div>
+      <div class="topbar-right">
+        <div class="ml-live"><div class="ml-dot"></div>ML MODEL LIVE</div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text2)" id="topbar-user"></div>
+      </div>
+    </div>
+    <div class="content" id="main-content"></div>
+  </main>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot" id="modal-foot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+const API = 'http://localhost:5000/api';
+let TOKEN = null;
+let USER  = null;
+
+// ── API helper ──
+async function call(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body)  opts.body = JSON.stringify(body);
+  const res  = await fetch(API + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ════════════════════════════
+// AUTH
+// ════════════════════════════
+function switchTab(tab, el) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('af-login').style.display    = tab === 'login'    ? 'block' : 'none';
+  document.getElementById('af-register').style.display = tab === 'register' ? 'block' : 'none';
+}
+
+function quick(e, p) {
+  document.getElementById('l-email').value = e;
+  document.getElementById('l-pass').value  = p;
+  doLogin();
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  const btn = document.getElementById('login-btn');
+  btn.textContent = 'CONNECTING...'; btn.disabled = true;
+  try {
+    const d = await call('POST', '/auth/login', { email, password: pass });
+    TOKEN = d.token; USER = d.user;
+    enterApp();
+  } catch(e) {
+    errEl.textContent = '✗ ' + e.message;
+    errEl.style.display = 'block';
+  }
+  btn.textContent = '→ ACCESS SYSTEM'; btn.disabled = false;
+}
+
+async function doRegister() {
+  const name  = document.getElementById('r-name').value.trim();
+  const email = document.getElementById('r-email').value.trim();
+  const pass  = document.getElementById('r-pass').value;
+  const role  = document.getElementById('r-role').value;
+  const errEl = document.getElementById('reg-err');
+  errEl.style.display = 'none';
+  try {
+    const d = await call('POST', '/auth/register', { name, email, password: pass, role });
+    TOKEN = d.token; USER = d.user;
+    enterApp();
+  } catch(e) {
+    errEl.textContent = '✗ ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function enterApp() {
+  document.getElementById('screen-auth').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  document.getElementById('sb-name').textContent  = USER.name;
+  document.getElementById('sb-role').textContent  = USER.role.toUpperCase();
+  document.getElementById('sb-role').className    = 'sb-role role-' + USER.role;
+  document.getElementById('topbar-user').textContent = USER.name;
+  const capMap = {
+    user:    'Submit transactions\nView own results only',
+    analyst: 'Review all fraud cases\nAccess analytics & queue',
+    admin:   'Full system access\nUser management + audit logs'
+  };
+  document.getElementById('sb-cap').textContent = capMap[USER.role];
+  buildNav();
+  goto(USER.role === 'user' ? 'submit' : 'dashboard');
+}
+
+function doLogout() {
+  TOKEN = null; USER = null;
+  document.getElementById('screen-app').classList.remove('active');
+  document.getElementById('screen-auth').classList.add('active');
+  document.getElementById('l-pass').value = '';
+}
+
+// ════════════════════════════
+// NAVIGATION
+// ════════════════════════════
+const NAV = {
+  user: [
+    { ico:'🔍', label:'Submit Transaction', page:'submit'    },
+    { ico:'📋', label:'My History',         page:'myhistory' },
+  ],
+  analyst: [
+    { ico:'📊', label:'Dashboard',        page:'dashboard' },
+    { ico:'⚠️', label:'Fraud Queue',      page:'queue',    notif:true },
+    { ico:'🔎', label:'All Transactions', page:'alltxns'   },
+    { ico:'📈', label:'Analytics',        page:'analytics' },
+  ],
+  admin: [
+    { ico:'📊', label:'Dashboard',        page:'dashboard' },
+    { ico:'⚠️', label:'Fraud Queue',      page:'queue',    notif:true },
+    { ico:'🔎', label:'All Transactions', page:'alltxns'   },
+    { ico:'📈', label:'Analytics',        page:'analytics' },
+    { ico:'👥', label:'Users',            page:'users',    sep:'Admin' },
+    { ico:'📜', label:'Audit Logs',       page:'logs'      },
+  ],
+};
+
+function buildNav() {
+  const items = NAV[USER.role] || [];
+  let html = '', lastSep = '';
+  items.forEach(it => {
+    if (it.sep && it.sep !== lastSep) {
+      html += `<div class="sb-sep">${it.sep}</div>`;
+      lastSep = it.sep;
+    } else if (!lastSep) {
+      html += `<div class="sb-sep">Navigation</div>`;
+      lastSep = 'Navigation';
+    }
+    const nb = it.notif ? `<span class="badge" id="nb-${it.page}">0</span>` : '';
+    html += `<div class="sb-item" id="nav-${it.page}" onclick="goto('${it.page}')">
+               <span class="ico">${it.ico}</span>${it.label}${nb}
+             </div>`;
+  });
+  document.getElementById('sb-nav').innerHTML = html;
+}
+
+const TITLES = {
+  submit:'SUBMIT TRANSACTION', myhistory:'MY HISTORY',
+  dashboard:'DASHBOARD', queue:'FRAUD ALERT QUEUE',
+  alltxns:'ALL TRANSACTIONS', analytics:'ANALYTICS',
+  users:'USER MANAGEMENT', logs:'AUDIT LOGS'
+};
+const RENDERS = {
+  submit: pgSubmit, myhistory: pgMyHistory,
+  dashboard: pgDashboard, queue: pgQueue,
+  alltxns: pgAllTxns, analytics: pgAnalytics,
+  users: pgUsers, logs: pgLogs
+};
+
+function goto(name) {
+  document.querySelectorAll('.sb-item').forEach(e => e.classList.remove('on'));
+  const el = document.getElementById('nav-' + name);
+  if (el) el.classList.add('on');
+  document.getElementById('topbar-title').textContent = TITLES[name] || name.toUpperCase();
+  if (RENDERS[name]) RENDERS[name]();
+  refreshQueueBadge();
+}
+
+async function refreshQueueBadge() {
+  if (USER.role === 'user') return;
+  try {
+    const q  = await call('GET', '/transactions/queue');
+    const el = document.getElementById('nb-queue');
+    if (el) el.textContent = q.length;
+  } catch(e) {}
+}
+
+function set(html) {
+  document.getElementById('main-content').innerHTML = html;
+}
+
+// ════════════════════════════
+// PAGE: SUBMIT (User only)
+// ════════════════════════════
+function pgSubmit() {
+  set(`
+    <div class="rbanner rb-user">
+      <span>🟢</span>
+      <span><strong>General User</strong> — You can submit one transaction at a time for ML analysis. You only see your own results. If fraud is detected, a bank analyst will review it.</span>
+    </div>
+    <div class="two-col">
+      <div class="panel" style="position:relative">
+        <div class="spin-wrap" id="sp"></div>
+        <div class="panel-head"><div class="panel-title">Transaction Details</div></div>
+        <div class="panel-body">
+          <div class="f-row">
+            <div class="field"><label>Amount ($)</label>
+              <input type="number" id="s-amt" placeholder="e.g. 249.99" step="0.01" min="0.01">
+            </div>
+            <div class="field"><label>Transaction Type</label>
+              <select id="s-type">
+                <option value="online">Online Purchase</option>
+                <option value="pos">POS Terminal</option>
+                <option value="atm">ATM Withdrawal</option>
+                <option value="transfer">Bank Transfer</option>
+                <option value="international">International</option>
+              </select>
+            </div>
+          </div>
+          <div class="f-row">
+            <div class="field"><label>Merchant Category</label>
+              <select id="s-merch">
+                <option value="retail">Retail / Grocery</option>
+                <option value="food">Food & Dining</option>
+                <option value="travel">Travel & Hotels</option>
+                <option value="electronics">Electronics</option>
+                <option value="luxury">Luxury Goods</option>
+                <option value="crypto">Crypto Exchange</option>
+                <option value="gambling">Online Gambling</option>
+                <option value="healthcare">Healthcare</option>
+              </select>
+            </div>
+            <div class="field"><label>Location Risk</label>
+              <select id="s-loc">
+                <option value="low">Known / Low Risk</option>
+                <option value="medium">Unfamiliar Region</option>
+                <option value="high">High Risk Country</option>
+              </select>
+            </div>
+          </div>
+          <div class="f-row">
+            <div class="field"><label>Hour of Transaction</label>
+              <select id="s-hour">
+                ${Array.from({length:24},(_,i)=>`<option value="${i}">${String(i).padStart(2,'0')}:00</option>`).join('')}
+              </select>
+            </div>
+            <div class="field"><label>Card Usage Today</label>
+              <select id="s-vel">
+                <option value="low">1–2 transactions (Normal)</option>
+                <option value="medium">3–5 transactions</option>
+                <option value="high">6+ transactions (High)</option>
+              </select>
+            </div>
+          </div>
+          <div class="f-row">
+            <div class="field"><label>Card Last 4 Digits</label>
+              <input id="s-card" maxlength="4" placeholder="4242">
+            </div>
+            <div class="field"><label>Cardholder Name</label>
+              <input id="s-holder" placeholder="As on card">
+            </div>
+          </div>
+          <div class="field f-full" style="margin-bottom:1rem">
+            <label>Description (optional)</label>
+            <input id="s-desc" placeholder="e.g. Amazon Electronics Purchase">
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1rem;margin-bottom:1.25rem">
+            <div style="font-family:var(--mono);font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:0.5rem">
+              V1–V28 PCA Features (optional — auto-generated if blank)
+            </div>
+            <input id="s-vfeats" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0.6rem 0.85rem;color:var(--text);font-family:var(--mono);font-size:0.75rem;outline:none;" placeholder="e.g. -1.36, 0.85, -0.77, ... (28 comma-separated values)">
+
+          </div>
+          <button class="btn btn-red btn-full" onclick="doPredict()">→ ANALYZE WITH ML MODEL</button>
+        </div>
+      </div>
+      <div>
+        <div id="pred-result"></div>
+
+        </div>
+      </div>
+    </div>`);
+}
+
+async function doPredict() {
+  const amount = parseFloat(document.getElementById('s-amt').value);
+  if (!amount || amount <= 0) { toast('Enter a valid transaction amount', 't-red'); return; }
+
+  const vRaw = document.getElementById('s-vfeats').value.trim();
+  const v_features = vRaw ? vRaw.split(',').map(Number).filter(n => !isNaN(n)) : null;
+
+  const sp = document.getElementById('sp');
+  sp.innerHTML = `<div class="spinner"></div><div class="spin-lbl">Sending to ML model...</div>`;
+  sp.classList.add('on');
+  document.getElementById('pred-result').innerHTML = '';
+
+  try {
+    const r = await call('POST', '/transactions/predict', {
+      amount,
+      txn_type:          document.getElementById('s-type').value,
+      merchant_category: document.getElementById('s-merch').value,
+      location_risk:     document.getElementById('s-loc').value,
+      hour_of_day:       parseInt(document.getElementById('s-hour').value),
+      card_velocity:     document.getElementById('s-vel').value,
+      card_last4:        document.getElementById('s-card').value || '****',
+      card_holder:       document.getElementById('s-holder').value || USER.name,
+      description:       document.getElementById('s-desc').value,
+      v_features,
+    });
+    sp.classList.remove('on');
+
+    const isFraud = r.is_fraud;
+    const pct = (r.fraud_probability * 100).toFixed(2);
+    document.getElementById('pred-result').innerHTML = `
+      <div class="result-box ${isFraud ? 'fraud' : 'genuine'}" style="display:block">
+        <div class="result-emoji">${isFraud ? '🚨' : '✅'}</div>
+        <div class="result-verdict ${isFraud ? 'c-red' : 'c-green'}">${r.prediction.toUpperCase()}</div>
+        <div class="result-prob" style="color:${isFraud ? 'var(--red)' : 'var(--green)'}">${pct}% Fraud Probability</div>
+        <div class="result-meta">
+          <div class="rmi"><strong class="txnid">${r.transaction_id}</strong>Transaction ID</div>
+          <div class="rmi"><strong>$${parseFloat(r.amount).toFixed(2)}</strong>Amount</div>
+          <div class="rmi"><strong>${new Date(r.submitted_at).toLocaleTimeString()}</strong>Analyzed At</div>
+        </div>
+        <div style="margin-top:1rem;font-family:var(--mono);font-size:0.72rem;padding:0.75rem;border-radius:3px;background:${isFraud ? 'rgba(255,45,85,0.08)' : 'rgba(0,230,118,0.06)'};color:${isFraud ? 'var(--red)' : 'var(--green)'}">
+          ${isFraud ? '⚠ Transaction flagged. Sent to bank analyst queue for review.' : '✓ Transaction appears genuine. Marked as cleared in database.'}
+        </div>
+      </div>`;
+
+    toast(isFraud ? `🚨 FRAUD — ${pct}% probability` : `✅ Genuine — ${pct}% probability`, isFraud ? 't-red' : 't-green');
+    refreshQueueBadge();
+  } catch(e) {
+    sp.classList.remove('on');
+    document.getElementById('pred-result').innerHTML = `
+      <div class="api-err">
+        ⚠ Cannot reach Flask backend<br><br>
+        Make sure it is running:<br>
+        <code>cd backend &amp;&amp; python app.py</code>
+      </div>`;
+    toast('Backend error: ' + e.message, 't-red');
+  }
+}
+
+// ════════════════════════════
+// PAGE: MY HISTORY (User only)
+// ════════════════════════════
+async function pgMyHistory() {
+  set(`<div class="rbanner rb-user"><span>🟢</span><span><strong>Your Transactions Only</strong> — You can only see transactions you submitted. Analysts and admins see all users' transactions.</span></div><div id="mhc"><div class="empty"><div class="empty-ico">⏳</div><p>Loading...</p></div></div>`);
+  try {
+    const txns  = await call('GET', '/transactions/mine');
+    const fraud = txns.filter(t => t.ml_prediction === 'Fraudulent').length;
+    document.getElementById('mhc').innerHTML = `
+      <div class="kpi-grid kpi-3" style="margin-bottom:1.5rem">
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div><div class="kpi-label">My Submissions</div><div class="kpi-val c-blue">${txns.length}</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--red)"></div><div class="kpi-label">Flagged Fraud</div><div class="kpi-val c-red">${fraud}</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--green)"></div><div class="kpi-label">Genuine</div><div class="kpi-val c-green">${txns.length - fraud}</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Transaction History</div></div>
+        ${!txns.length ? `<div class="empty"><div class="empty-ico">📭</div><p>No transactions yet. Go to Submit Transaction to get started.</p></div>` : `
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>TXN ID</th><th>Amount</th><th>Type</th><th>Merchant</th><th>ML Verdict</th><th>Probability</th><th>Analyst Status</th><th>Submitted</th></tr></thead>
+          <tbody>${txns.map(t => `<tr>
+            <td class="txnid">${t.id}</td>
+            <td>$${parseFloat(t.amount).toFixed(2)}</td>
+            <td style="text-transform:capitalize">${t.txn_type}</td>
+            <td style="text-transform:capitalize;color:var(--text2)">${t.merchant_category}</td>
+            <td><span class="b b-${t.ml_prediction === 'Fraudulent' ? 'fraud' : 'genuine'}">${t.ml_prediction}</span></td>
+            <td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${(t.fraud_probability*100).toFixed(0)}%;background:${t.ml_prediction==='Fraudulent'?'var(--red)':'var(--green)'}"></div></div><span class="pbar-val">${(t.fraud_probability*100).toFixed(1)}%</span></div></td>
+            <td><span class="b b-${t.review_status}">${t.review_status}</span></td>
+            <td style="font-size:0.72rem;color:var(--text2)">${t.submitted_at}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>`;
+  } catch(e) {
+    document.getElementById('mhc').innerHTML = `<div class="api-err">⚠ ${e.message}</div>`;
+  }
+}
+
+// ════════════════════════════
+// PAGE: DASHBOARD (Analyst/Admin)
+// ════════════════════════════
+async function pgDashboard() {
+  const role = USER.role;
+  set(`<div id="dbc"><div class="empty"><div class="empty-ico">⏳</div><p>Loading dashboard...</p></div></div>`);
+  try {
+    const s = await call('GET', '/dashboard/stats');
+    document.getElementById('dbc').innerHTML = `
+      <div class="rbanner rb-${role}"><span>${role==='admin'?'🟡':'🔵'}</span>
+        <span><strong>${role==='admin'?'Administrator':'Bank Analyst'}</strong> — You have full transaction visibility across all users. You can review fraud cases, investigate alerts, and access analytics. General users cannot see this.</span>
+      </div>
+      <div class="kpi-grid kpi-4">
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div><div class="kpi-label">Total Transactions</div><div class="kpi-val c-blue">${s.total}</div><div class="kpi-sub">All users combined</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--red)"></div><div class="kpi-label">Fraud Detected</div><div class="kpi-val c-red">${s.fraud}</div><div class="kpi-sub">${s.fraud_rate}% fraud rate</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--amber)"></div><div class="kpi-label">Awaiting Review</div><div class="kpi-val c-amber">${s.open_queue}</div><div class="kpi-sub">In fraud queue</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--green)"></div><div class="kpi-label">Cases Resolved</div><div class="kpi-val c-green">${s.confirmed + s.cleared_fp}</div><div class="kpi-sub">Avg prob: ${s.avg_fraud_prob}%</div></div>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Fraud vs Genuine Split</div></div>
+          <div class="panel-body" style="display:flex;align-items:center;justify-content:center">
+            <canvas id="c-donut" style="max-height:220px;max-width:220px"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Recent Fraud Alerts</div>
+            <button class="btn btn-outline btn-sm" onclick="goto('queue')">Full Queue →</button>
+          </div>
+          <div class="tbl-wrap">
+            ${!s.recent_fraud.length ? `<div class="empty"><div class="empty-ico">🛡</div><p>No fraud detected yet.</p></div>` : `
+            <table>
+              <thead><tr><th>TXN ID</th><th>User</th><th>Amount</th><th>Probability</th><th>Status</th><th></th></tr></thead>
+              <tbody>${s.recent_fraud.map(t => `<tr>
+                <td class="txnid">${t.id}</td>
+                <td>${t.user_name}</td>
+                <td style="color:var(--red)">$${parseFloat(t.amount).toFixed(2)}</td>
+                <td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${(t.fraud_probability*100).toFixed(0)}%;background:var(--red)"></div></div><span class="pbar-val">${(t.fraud_probability*100).toFixed(1)}%</span></div></td>
+                <td><span class="b b-${t.review_status}">${t.review_status}</span></td>
+                <td><button class="btn btn-outline btn-sm" onclick="openReview('${t.id}')">Review</button></td>
+              </tr>`).join('')}</tbody>
+            </table>`}
+          </div>
+        </div>
+      </div>`;
+
+    new Chart(document.getElementById('c-donut').getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: ['Genuine','Fraudulent'], datasets: [{ data: [s.genuine||1, s.fraud], backgroundColor: ['rgba(0,230,118,0.7)','rgba(255,45,85,0.7)'], borderColor: ['#00e676','#ff2d55'], borderWidth: 2 }] },
+      options: { responsive: true, cutout: '68%', plugins: { legend: { labels: { color: '#7986cb', font: { family: 'IBM Plex Mono', size: 11 } } } } }
+    });
+  } catch(e) {
+    document.getElementById('dbc').innerHTML = `<div class="api-err">⚠ Cannot connect to backend: ${e.message}<br><br>Make sure Flask is running: <code>cd backend &amp;&amp; python app.py</code></div>`;
+  }
+}
+
+// ════════════════════════════
+// PAGE: FRAUD QUEUE (Analyst/Admin)
+// ════════════════════════════
+async function pgQueue() {
+  set(`<div id="qc"><div class="empty"><div class="empty-ico">⏳</div><p>Loading queue...</p></div></div>`);
+  try {
+    const queue = await call('GET', '/transactions/queue');
+    document.getElementById('qc').innerHTML = `
+      <div class="rbanner rb-${USER.role}"><span>${USER.role==='admin'?'🟡':'🔵'}</span>
+        <span><strong>Fraud Alert Queue</strong> — Transactions flagged by the ML model as potentially fraudulent. Confirm fraud, clear false positives, or open a full investigation. General users cannot access this.</span>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">⚠ OPEN ALERTS — ${queue.length} Pending</div></div>
+        ${!queue.length ? `<div class="empty"><div class="empty-ico">✅</div><p>Queue is clear. No open fraud alerts.</p></div>` : `
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>TXN ID</th><th>Submitted By</th><th>Amount</th><th>Type</th><th>Merchant</th><th>Location</th><th>Fraud Prob.</th><th>Submitted</th><th>Actions</th></tr></thead>
+          <tbody>${queue.map(t => `<tr>
+            <td class="txnid">${t.id}</td>
+            <td>${t.user_name}</td>
+            <td style="color:var(--red);font-weight:600">$${parseFloat(t.amount).toFixed(2)}</td>
+            <td style="text-transform:capitalize">${t.txn_type}</td>
+            <td style="text-transform:capitalize">${t.merchant_category}</td>
+            <td><span class="b b-${t.location_risk==='high'?'fraud':t.location_risk==='medium'?'open':'genuine'}">${t.location_risk}</span></td>
+            <td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${(t.fraud_probability*100).toFixed(0)}%;background:var(--red)"></div></div><span class="pbar-val" style="color:var(--red)">${(t.fraud_probability*100).toFixed(1)}%</span></div></td>
+            <td style="font-size:0.72rem;color:var(--text2)">${t.submitted_at}</td>
+            <td><div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+              <button class="btn btn-red btn-sm" onclick="quickAction('${t.id}','confirmed_fraud')">✗ Fraud</button>
+              <button class="btn btn-green btn-sm" onclick="quickAction('${t.id}','cleared')">✓ Clear</button>
+              <button class="btn btn-blue btn-sm" onclick="openReview('${t.id}')">🔎 Investigate</button>
+            </div></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>`;
+  } catch(e) {
+    document.getElementById('qc').innerHTML = `<div class="api-err">⚠ ${e.message}</div>`;
+  }
+}
+
+async function quickAction(id, action) {
+  try {
+    await call('POST', `/transactions/${id}/review`, { action, note: '' });
+    toast(action === 'confirmed_fraud' ? `🚨 ${id} confirmed as fraud` : `✅ ${id} cleared`, action === 'confirmed_fraud' ? 't-red' : 't-green');
+    refreshQueueBadge();
+    pgQueue();
+  } catch(e) { toast('Error: ' + e.message, 't-red'); }
+}
+
+// ════════════════════════════
+// PAGE: ALL TRANSACTIONS
+// ════════════════════════════
+async function pgAllTxns() {
+  set(`
+    <div class="rbanner rb-${USER.role}"><span>${USER.role==='admin'?'🟡':'🔵'}</span>
+      <span><strong>Full Transaction Visibility</strong> — You can see every transaction from every user in the system. General users can only see their own submissions.</span>
+    </div>
+    <div class="filter-bar">
+      <input id="fs" placeholder="🔍  Search by ID, user name, amount..." oninput="loadAll()">
+      <select id="fv" onchange="loadAll()"><option value="">All Verdicts</option><option value="Fraudulent">Fraud Only</option><option value="Genuine">Genuine Only</option></select>
+      <select id="fst" onchange="loadAll()"><option value="">All Statuses</option><option value="open">Open</option><option value="confirmed_fraud">Confirmed Fraud</option><option value="cleared">Cleared</option><option value="investigating">Investigating</option></select>
+      <select id="ft" onchange="loadAll()"><option value="">All Types</option><option value="online">Online</option><option value="pos">POS</option><option value="atm">ATM</option><option value="transfer">Transfer</option><option value="international">International</option></select>
+    </div>
+    <div class="panel"><div class="tbl-wrap" id="all-tbl"><div class="empty"><div class="empty-ico">⏳</div><p>Loading...</p></div></div></div>`);
+  loadAll();
+}
+
+async function loadAll() {
+  const p = new URLSearchParams();
+  const s  = document.getElementById('fs')?.value;
+  const v  = document.getElementById('fv')?.value;
+  const st = document.getElementById('fst')?.value;
+  const t  = document.getElementById('ft')?.value;
+  if (s)  p.set('search', s);
+  if (v)  p.set('verdict', v);
+  if (st) p.set('status', st);
+  if (t)  p.set('txn_type', t);
+  try {
+    const txns = await call('GET', '/transactions/all?' + p.toString());
+    const el   = document.getElementById('all-tbl');
+    if (!txns.length) { el.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><p>No transactions match your filters.</p></div>'; return; }
+    el.innerHTML = `<table>
+      <thead><tr><th>TXN ID</th><th>User</th><th>Amount</th><th>Type</th><th>Merchant</th><th>ML Verdict</th><th>Probability</th><th>Status</th><th>Reviewed By</th><th></th></tr></thead>
+      <tbody>${txns.map(t => `<tr>
+        <td class="txnid">${t.id}</td>
+        <td>${t.user_name || '–'}</td>
+        <td style="color:${t.ml_prediction==='Fraudulent'?'var(--red)':'var(--text)'}">$${parseFloat(t.amount).toFixed(2)}</td>
+        <td style="text-transform:capitalize;font-size:0.75rem">${t.txn_type}</td>
+        <td style="text-transform:capitalize;color:var(--text2);font-size:0.75rem">${t.merchant_category}</td>
+        <td><span class="b b-${t.ml_prediction==='Fraudulent'?'fraud':'genuine'}">${t.ml_prediction}</span></td>
+        <td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${(t.fraud_probability*100).toFixed(0)}%;background:${t.ml_prediction==='Fraudulent'?'var(--red)':'var(--green)'}"></div></div><span class="pbar-val">${(t.fraud_probability*100).toFixed(1)}%</span></div></td>
+        <td><span class="b b-${t.review_status}">${t.review_status}</span></td>
+        <td style="font-size:0.7rem;color:var(--text2)">${t.reviewer_name || '—'}</td>
+        <td>${t.ml_prediction==='Fraudulent' ? `<button class="btn btn-outline btn-sm" onclick="openReview('${t.id}')">Review</button>` : '—'}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch(e) { document.getElementById('all-tbl').innerHTML = `<div class="api-err">⚠ ${e.message}</div>`; }
+}
+
+// ════════════════════════════
+// PAGE: ANALYTICS
+// ════════════════════════════
+async function pgAnalytics() {
+  set(`<div class="rbanner rb-${USER.role}"><span>${USER.role==='admin'?'🟡':'🔵'}</span><span><strong>Analytics Dashboard</strong> — Fraud trend analysis, pattern detection, and model metrics across all transactions. Not accessible to general users.</span></div><div id="anc"><div class="empty"><div class="empty-ico">⏳</div><p>Loading analytics...</p></div></div>`);
+  try {
+    const [data, info] = await Promise.all([call('GET', '/analytics'), call('GET', '/model/info')]);
+    const totalFraud = data.by_merchant.reduce((s, m) => s + m.fraud, 0);
+    const totalAll   = data.by_merchant.reduce((s, m) => s + m.total, 0);
+
+    document.getElementById('anc').innerHTML = `
+      <div class="kpi-grid kpi-4" style="margin-bottom:1.5rem">
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div><div class="kpi-label">ML Algorithm</div><div class="kpi-val" style="font-size:1rem;color:var(--blue);font-family:var(--mono);margin-top:0.25rem">${(info.model_type||'').replace('Classifier','')}</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--green)"></div><div class="kpi-label">ROC-AUC Score</div><div class="kpi-val c-green">${info.metrics?.roc_auc||'–'}</div><div class="kpi-sub">1.0 = perfect</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--amber)"></div><div class="kpi-label">F1 Score</div><div class="kpi-val c-amber">${info.metrics?.f1_score||'–'}</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--red)"></div><div class="kpi-label">Fraud Cases</div><div class="kpi-val c-red">${totalFraud}</div><div class="kpi-sub">of ${totalAll} total</div></div>
+      </div>
+      <div class="two-col">
+        <div class="panel"><div class="panel-head"><div class="panel-title">Fraud by Merchant Category</div></div><div class="panel-body"><canvas id="c-merch" style="max-height:230px"></canvas></div></div>
+        <div class="panel"><div class="panel-head"><div class="panel-title">Transaction Volume by Type</div></div><div class="panel-body"><canvas id="c-type" style="max-height:230px"></canvas></div></div>
+      </div>
+      <div class="panel"><div class="panel-head"><div class="panel-title">Transaction Frequency by Hour of Day (0–23)</div></div><div class="panel-body"><canvas id="c-hour" style="max-height:160px"></canvas></div></div>
+      <div class="panel"><div class="panel-head"><div class="panel-title">Top 10 Highest-Risk Transactions</div></div>
+        <div class="tbl-wrap">
+          ${!data.top_fraud.length ? `<div class="empty"><div class="empty-ico">🛡</div><p>No fraud detected yet.</p></div>` : `
+          <table>
+            <thead><tr><th>TXN ID</th><th>User</th><th>Amount</th><th>Merchant</th><th>Location</th><th>Fraud Probability</th><th>Status</th></tr></thead>
+            <tbody>${data.top_fraud.map(t => `<tr>
+              <td class="txnid">${t.id}</td>
+              <td>${t.user_name}</td>
+              <td style="color:var(--red)">$${parseFloat(t.amount).toFixed(2)}</td>
+              <td style="text-transform:capitalize">${t.merchant_category}</td>
+              <td><span class="b b-${t.location_risk==='high'?'fraud':t.location_risk==='medium'?'open':'genuine'}">${t.location_risk}</span></td>
+              <td><div class="pbar"><div class="pbar-track"><div class="pbar-fill" style="width:${(t.fraud_probability*100).toFixed(0)}%;background:var(--red)"></div></div><span class="pbar-val" style="color:var(--red)">${(t.fraud_probability*100).toFixed(1)}%</span></div></td>
+              <td><span class="b b-${t.review_status}">${t.review_status}</span></td>
+            </tr>`).join('')}</tbody>
+          </table>`}
+        </div>
+      </div>`;
+
+    if (data.by_merchant.length) {
+      new Chart(document.getElementById('c-merch').getContext('2d'), {
+        type: 'bar',
+        data: { labels: data.by_merchant.map(m => m.merchant_category), datasets: [
+          { label:'Fraud', data: data.by_merchant.map(m => m.fraud), backgroundColor:'rgba(255,45,85,0.6)', borderColor:'#ff2d55', borderWidth:1, borderRadius:2 },
+          { label:'Total', data: data.by_merchant.map(m => m.total), backgroundColor:'rgba(41,121,255,0.3)', borderColor:'#2979ff', borderWidth:1, borderRadius:2 },
+        ]},
+        options: { responsive:true, plugins:{legend:{labels:{color:'#7986cb'}}}, scales:{x:{ticks:{color:'#7986cb'},grid:{color:'rgba(30,36,64,0.5)'}},y:{ticks:{color:'#7986cb'},grid:{color:'rgba(30,36,64,0.5)'}}}}
+      });
+    }
+    if (data.by_type.length) {
+      new Chart(document.getElementById('c-type').getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: data.by_type.map(t => t.txn_type), datasets: [{ data: data.by_type.map(t => t.total), backgroundColor: ['rgba(41,121,255,0.7)','rgba(0,230,118,0.7)','rgba(255,45,85,0.7)','rgba(255,171,0,0.7)','rgba(156,39,176,0.7)'], borderWidth:1 }] },
+        options: { responsive:true, plugins:{legend:{labels:{color:'#7986cb',font:{family:'IBM Plex Mono',size:10}}}} }
+      });
+    }
+    const hrs = Array(24).fill(0);
+    data.by_hour.forEach(h => { hrs[h.hour] = h.total; });
+    new Chart(document.getElementById('c-hour').getContext('2d'), {
+      type: 'line',
+      data: { labels: hrs.map((_,i) => `${String(i).padStart(2,'0')}:00`), datasets:[{ label:'Transactions', data:hrs, borderColor:'#2979ff', backgroundColor:'rgba(41,121,255,0.1)', fill:true, tension:0.4, pointRadius:0 }] },
+      options: { responsive:true, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#7986cb',maxTicksLimit:8},grid:{color:'rgba(30,36,64,0.5)'}},y:{ticks:{color:'#7986cb'},grid:{color:'rgba(30,36,64,0.5)'}}}}
+    });
+  } catch(e) {
+    document.getElementById('anc').innerHTML = `<div class="api-err">⚠ ${e.message}</div>`;
+  }
+}
+
+// ════════════════════════════
+// PAGE: USERS (Admin only)
+// ════════════════════════════
+async function pgUsers() {
+  set(`<div class="rbanner rb-admin"><span>🟡</span><span><strong>Admin Only — User Management</strong> — View all registered users, change their roles, activate or deactivate accounts. Analysts and general users cannot access this section.</span></div><div id="uc"><div class="empty"><div class="empty-ico">⏳</div><p>Loading...</p></div></div>`);
+  try {
+    const users = await call('GET', '/admin/users');
+    document.getElementById('uc').innerHTML = `
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Registered Users (${users.length})</div></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Transactions</th><th>Last Login</th><th>Actions</th></tr></thead>
+          <tbody>${users.map(u => `<tr>
+            <td style="font-weight:500">${u.name}${u.id === USER.id ? ' <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text3)">(you)</span>' : ''}</td>
+            <td style="font-family:var(--mono);font-size:0.72rem;color:var(--text2)">${u.email}</td>
+            <td><span class="b b-${u.role}">${u.role}</span></td>
+            <td><span class="b b-${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td style="font-family:var(--mono);font-size:0.75rem">${u.txn_count || 0} <span style="color:var(--red)">${u.fraud_count ? `(${u.fraud_count} fraud)` : ''}</span></td>
+            <td style="font-size:0.7rem;color:var(--text2)">${u.last_login || 'Never'}</td>
+            <td>${u.id === USER.id ? '—' : `<div style="display:flex;gap:0.4rem">
+              <button class="btn btn-${u.is_active ? 'amber' : 'green'} btn-sm" onclick="toggleUser(${u.id})">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+              <button class="btn btn-outline btn-sm" onclick="roleModal(${u.id},'${u.role}','${u.name}')">Role</button>
+            </div>`}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('uc').innerHTML = `<div class="api-err">⚠ ${e.message}</div>`;
+  }
+}
+
+async function toggleUser(uid) {
+  try {
+    await call('POST', `/admin/users/${uid}/toggle`);
+    toast('User status updated', 't-amber');
+    pgUsers();
+  } catch(e) { toast(e.message, 't-red'); }
+}
+
+function roleModal(uid, currentRole, name) {
+  document.getElementById('modal-title').textContent = 'CHANGE ROLE';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="margin-bottom:1rem;font-family:var(--mono);font-size:0.8rem;color:var(--text2)">Changing role for: <strong style="color:var(--text)">${name}</strong></div>
+    <div class="field"><label>Select New Role</label>
+      <select id="new-role">
+        <option value="user"     ${currentRole==='user'    ?'selected':''}>General User</option>
+        <option value="analyst"  ${currentRole==='analyst' ?'selected':''}>Bank Analyst</option>
+        <option value="admin"    ${currentRole==='admin'   ?'selected':''}>Administrator</option>
+      </select>
+    </div>`;
+  document.getElementById('modal-foot').innerHTML = `
+    <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-red btn-sm" onclick="applyRole(${uid})">Apply Change</button>`;
+  document.getElementById('modal-bg').classList.add('on');
+}
+
+async function applyRole(uid) {
+  const role = document.getElementById('new-role').value;
+  try {
+    await call('POST', `/admin/users/${uid}/role`, { role });
+    closeModal();
+    toast('Role updated to ' + role, 't-amber');
+    pgUsers();
+  } catch(e) { toast(e.message, 't-red'); }
+}
+
+// ════════════════════════════
+// PAGE: AUDIT LOGS (Admin only)
+// ════════════════════════════
+async function pgLogs() {
+  set(`<div class="rbanner rb-admin"><span>🟡</span><span><strong>Admin Only — Audit Logs</strong> — Every user action is stored in the database. Analysts cannot see this. Used for compliance and security investigations.</span></div><div id="lc"><div class="empty"><div class="empty-ico">⏳</div><p>Loading logs...</p></div></div>`);
+  try {
+    const logs = await call('GET', '/admin/logs?limit=100');
+    document.getElementById('lc').innerHTML = `
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Audit Log — ${logs.length} Recent Entries</div></div>
+        <div style="padding:1rem;display:flex;flex-direction:column;gap:0.3rem;max-height:70vh;overflow-y:auto">
+          ${!logs.length ? `<div class="empty"><div class="empty-ico">📜</div><p>No log entries yet.</p></div>` :
+            logs.map((l, i) => `
+              <div style="display:grid;grid-template-columns:150px 120px 1fr;gap:0.75rem;padding:0.5rem 0.75rem;background:${i%2===0?'var(--bg2)':'transparent'};border-radius:2px;align-items:start">
+                <span style="font-family:var(--mono);font-size:0.62rem;color:var(--text3)">${l.created_at}</span>
+                <span style="font-family:var(--mono);font-size:0.65rem;color:var(--blue)">[${l.user_name || 'system'}]</span>
+                <span style="font-family:var(--mono);font-size:0.72rem"><strong style="color:var(--amber)">${l.action}</strong>${l.detail ? ' — ' + l.detail : ''}</span>
+              </div>`).join('')}
+        </div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('lc').innerHTML = `<div class="api-err">⚠ ${e.message}</div>`;
+  }
+}
+
+// ════════════════════════════
+// REVIEW MODAL
+// ════════════════════════════
+async function openReview(id) {
+  try {
+    const txns = await call('GET', '/transactions/all?search=' + id);
+    const t    = txns.find(x => x.id === id);
+    if (!t) { toast('Transaction not found', 't-red'); return; }
+
+    document.getElementById('modal-title').textContent = 'CASE: ' + id;
+    document.getElementById('modal-body').innerHTML = `
+      <div style="margin-bottom:1.25rem">
+        ${[
+          ['Transaction ID',   `<span class="txnid">${t.id}</span>`],
+          ['Submitted By',     t.user_name || '–'],
+          ['Amount',           `<span style="color:var(--red);font-weight:600">$${parseFloat(t.amount).toFixed(2)}</span>`],
+          ['Type',             t.txn_type],
+          ['Merchant',         t.merchant_category],
+          ['Location Risk',    `<span class="b b-${t.location_risk==='high'?'fraud':t.location_risk==='medium'?'open':'genuine'}">${t.location_risk}</span>`],
+          ['ML Verdict',       `<span class="b b-fraud">${t.ml_prediction}</span>`],
+          ['Fraud Probability',`<span style="color:var(--red)">${(t.fraud_probability*100).toFixed(2)}%</span>`],
+          ['Card',             `****${t.card_last4 || '????'}  ${t.card_holder ? '— ' + t.card_holder : ''}`],
+          ['Description',      t.description || '—'],
+          ['Current Status',   `<span class="b b-${t.review_status}">${t.review_status}</span>`],
+          ['Reviewed By',      t.reviewer_name || '—'],
+        ].map(([k, v]) => `<div class="info-row"><span class="info-k">${k}</span><span class="info-v">${v}</span></div>`).join('')}
+      </div>
+      <div class="field">
+        <label>Investigation Note</label>
+        <textarea id="rev-note" rows="3" placeholder="Enter your findings, evidence, or comments...">${t.analyst_note || ''}</textarea>
+      </div>`;
+
+    document.getElementById('modal-foot').innerHTML = `
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue btn-sm"  onclick="doReview('${id}','investigating')">🔍 Investigating</button>
+      <button class="btn btn-green btn-sm" onclick="doReview('${id}','cleared')">✓ Clear (False Positive)</button>
+      <button class="btn btn-red btn-sm"   onclick="doReview('${id}','confirmed_fraud')">✗ Confirm Fraud</button>`;
+
+    document.getElementById('modal-bg').classList.add('on');
+  } catch(e) { toast('Error: ' + e.message, 't-red'); }
+}
+
+async function doReview(id, action) {
+  const note = document.getElementById('rev-note')?.value || '';
+  try {
+    await call('POST', `/transactions/${id}/review`, { action, note });
+    closeModal();
+    refreshQueueBadge();
+    const msgs = { confirmed_fraud:'confirmed as fraud', cleared:'cleared as false positive', investigating:'marked for investigation' };
+    toast(`${id} ${msgs[action] || action}`, action==='confirmed_fraud'?'t-red':action==='cleared'?'t-green':'t-blue');
+    // refresh current page
+    const active = document.querySelector('.sb-item.on');
+    if (active) active.click();
+  } catch(e) { toast('Error: ' + e.message, 't-red'); }
+}
+
+// ════════════════════════════
+// MODAL & TOAST
+// ════════════════════════════
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-bg')) return;
+  document.getElementById('modal-bg').classList.remove('on');
+}
+
+function toast(msg, cls = 't-blue') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + cls + ' show';
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
