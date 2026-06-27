@@ -712,15 +712,19 @@ def get_logs():
 # ═════════════════════════════════════════════
 # START
 # ═════════════════════════════════════════════
+# Initialize app (runs for both Gunicorn and python app.py)
+print("\n🛡 FraudShield — Initializing...")
+init_db()
+
+if not load_ml_model():
+    print("\n⚠ WARNING: Could not load ML model.")
+    print("   Run this first: cd ../ml && python train_model.py\n")
+else:
+    print("[ML] Model ready for predictions")
+
+
 if __name__ == '__main__':
-    print("\n🛡  FraudShield — Flask Backend")
-    print("="*40)
-    init_db()
-    if not load_ml_model():
-        print("\n⚠  WARNING: Could not load ML model.")
-        print("   Run this first:  cd ../ml && python train_model.py\n")
-    else:
-        print("[ML] Model ready for predictions")
-    print("\n[SERVER] Starting on http://localhost:5000")
+    print("=" * 40)
+    print("[SERVER] Starting on http://localhost:5000")
     print("[SERVER] Press Ctrl+C to stop\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)                                 
+    app.run(debug=True, host='0.0.0.0', port=5000)                                
