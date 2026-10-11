@@ -6,7 +6,7 @@ A web-based Machine Learning project to detect fraudulent credit card transactio
 - Python
 - Flask
 - SQLite
-- HTML, CSS, Bootstrap
+- HTML, CSS
 - Machine Learning (Scikit-learn)
 
 ## Features
